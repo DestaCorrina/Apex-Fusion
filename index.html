@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Apex Fusion Visualizer</title>
+<style>
+:root {
+  --bg:       #040d1a;
+  --panel:    #081830;
+  --panel2:   #0c2244;
+  --border:   #1a3a6b;
+  --on:       #00e676;
+  --off:      #37474f;
+  --warn:     #ffb300;
+  --text:     #90aec8;
+  --bright:   #ddeeff;
+  --accent:   #29b6f6;
+  --feed:     #ce93d8;
+  --red:      #ef5350;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Courier New',monospace;font-size:13px;min-height:100vh}
+
+/* ── HEADER ── */
+header{background:var(--panel);border-bottom:2px solid var(--border);padding:10px 20px;display:flex;align-items:center;gap:16px}
+header h1{font-size:16px;color:var(--accent);letter-spacing:3px;text-transform:uppercase;white-space:nowrap}
+.tabs{display:flex;gap:4px;margin-left:auto}
+.tab-btn{background:transparent;border:1px solid var(--border);color:var(--text);padding:5px 14px;cursor:pointer;font-family:inherit;font-size:11px;letter-spacing:1px;text-transform:uppercase;transition:.15s}
+.tab-btn:hover{border-color:var(--accent);color:var(--accent)}
+.tab-btn.active{background:var(--accent);color:var(--bg);border-color:var(--accent);font-weight:bold}
+
+/* ── CONTROLS ── */
+#controls{background:var(--panel2);border-bottom:1px solid var(--border);padding:8px 20px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.cg{display:flex;align-items:center;gap:6px}
+.cl{color:var(--accent);font-size:10px;text-transform:uppercase;letter-spacing:1px;white-space:nowrap}
+#time-disp{color:var(--bright);font-size:15px;font-weight:bold;min-width:50px;text-align:center}
+input[type=range]{width:180px;accent-color:var(--accent);cursor:pointer}
+.feed-btn{background:var(--panel);border:1px solid var(--border);color:var(--text);padding:3px 9px;cursor:pointer;font-family:inherit;font-size:11px;text-transform:uppercase;border-radius:3px;transition:.15s}
+.feed-btn.active{background:var(--feed);border-color:var(--feed);color:#000;font-weight:bold}
+input[type=number]{background:var(--bg);border:1px solid var(--border);color:var(--bright);padding:3px 5px;font-family:inherit;font-size:12px;width:58px;text-align:center}
+.tog{background:var(--off);border:none;color:#fff;padding:3px 9px;cursor:pointer;font-family:inherit;font-size:11px;border-radius:3px;transition:.15s;text-transform:uppercase}
+.tog.open{background:var(--warn);color:#000}
+.tog.maint{background:var(--red)}
+
+/* ── TABS ── */
+.tab-content{display:none;padding:16px 20px}
+.tab-content.active{display:block}
+
+/* ── DASHBOARD ── */
+#dash-wrap{display:grid;grid-template-columns:1fr 240px;gap:14px;max-width:1100px}
+.tank-box{background:var(--panel);border:1px solid var(--border);border-radius:5px;padding:14px}
+.tank-box h2{font-size:10px;text-transform:uppercase;letter-spacing:2px;color:var(--accent);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+#vtank{grid-column:2;grid-row:1/3}
+
+/* Tank visual */
+.tank-visual{background:linear-gradient(180deg,#030d1e 0%,#061830 35%,#082050 65%,#0a2d70 100%);border:2px solid var(--border);border-radius:4px;min-height:180px;padding:16px 20px;display:flex;align-items:flex-end;justify-content:space-around;gap:8px;margin-bottom:10px;position:relative;overflow:hidden}
+.tank-visual::after{content:'';position:absolute;bottom:0;left:0;right:0;height:40%;background:linear-gradient(transparent,rgba(10,60,140,.25));pointer-events:none}
+.sump-visual{background:linear-gradient(180deg,#030d1e 0%,#061525 60%,#082035 100%);border:2px solid var(--border);border-radius:4px;min-height:140px;padding:14px 20px;display:flex;align-items:flex-end;justify-content:space-around;gap:8px;margin-bottom:10px}
+.equip{display:flex;flex-direction:column;align-items:center;gap:4px;z-index:1}
+.equip-icon{font-size:30px;transition:.3s;filter:grayscale(1) brightness(0.4)}
+.equip-icon.on{filter:none;text-shadow:0 0 12px currentColor}
+.equip-lbl{font-size:9px;color:var(--text);text-align:center;letter-spacing:.5px;text-transform:uppercase}
+.equip-dot{width:7px;height:7px;border-radius:50%;background:var(--off);transition:.3s}
+.equip-dot.on{background:var(--on);box-shadow:0 0 6px var(--on)}
+
+/* Outlet cards grid */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:7px}
+.card{background:var(--panel2);border:1px solid var(--border);border-left:3px solid var(--off);border-radius:4px;padding:8px 10px;cursor:pointer;transition:.15s;position:relative}
+.card:hover{border-top-color:var(--accent);border-right-color:var(--accent);border-bottom-color:var(--accent)}
+.card.on{border-left-color:var(--on)}
+.card.warn{border-left-color:var(--warn)}
+.card-name{font-size:11px;color:var(--bright);font-weight:bold;letter-spacing:.5px}
+.card-state{font-size:10px;margin-top:2px;font-weight:bold}
+.card-state.on{color:var(--on)}
+.card-state.off{color:var(--off)}
+.card-rule{font-size:9px;color:var(--text);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+
+/* Virtual outlet panel */
+.vlist{display:flex;flex-direction:column;gap:6px}
+.vcard{background:var(--panel2);border:1px solid var(--border);border-left:3px solid var(--off);border-radius:4px;padding:7px 10px;cursor:pointer}
+.vcard.on{border-left-color:var(--feed)}
+.vcard-name{font-size:11px;color:var(--bright);font-weight:bold}
+.vcard-state{font-size:10px;margin-top:1px;font-weight:bold}
+.vcard-state.on{color:var(--feed)}
+.vcard-state.off{color:var(--off)}
+.vcard-rule{font-size:9px;color:var(--text);margin-top:2px}
+
+/* ── TIMELINE ── */
+#tl-wrap{overflow-x:auto;padding-bottom:10px}
+.tl-note{font-size:10px;color:var(--text);margin-bottom:12px;font-style:italic}
+.tl-hours{display:flex;margin-left:155px;margin-bottom:3px}
+.tl-h{flex:1;font-size:9px;color:var(--text);border-left:1px solid var(--border);padding-left:2px;min-width:0}
+.tl-row{display:flex;align-items:center;margin-bottom:3px}
+.tl-lbl{width:150px;flex-shrink:0;font-size:10px;color:var(--bright);text-align:right;padding-right:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tl-lbl.virtual{color:var(--feed)}
+.tl-bar{flex:1;height:18px;background:var(--panel);border:1px solid var(--border);position:relative;overflow:hidden}
+.tl-seg{position:absolute;height:100%;background:var(--on);opacity:.75}
+.tl-seg.v{background:var(--feed)}
+.tl-cursor{position:absolute;top:0;height:100%;width:2px;background:var(--accent);z-index:5;pointer-events:none}
+.tl-section{margin-top:14px;font-size:10px;text-transform:uppercase;letter-spacing:2px;color:var(--accent);margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--border)}
+
+/* ── DEPENDENCY GRAPH ── */
+#graph-wrap{overflow:auto;background:var(--panel);border:1px solid var(--border);border-radius:5px;padding:16px}
+#dep-svg{display:block;min-width:860px}
+.dep-node rect{fill:var(--panel2);stroke:var(--border);stroke-width:1.5;rx:4}
+.dep-node text{font-family:'Courier New',monospace;font-size:11px;fill:var(--bright)}
+.dep-node.on rect{stroke:var(--on);stroke-width:2}
+.dep-node.on text{fill:var(--on)}
+.dep-node.virtual rect{fill:#1a0a2e}
+.dep-node.virtual.on rect{stroke:var(--feed)}
+.dep-node.virtual.on text{fill:var(--feed)}
+.dep-node.input rect{fill:#0a0a20;stroke:#333;stroke-dasharray:4}
+.dep-node.input text{fill:var(--text)}
+.dep-edge{fill:none;stroke:var(--border);stroke-width:1.2;marker-end:url(#arr)}
+.dep-edge.on{stroke:var(--on);stroke-width:1.8;opacity:.7}
+.dep-edge.virt{stroke:var(--feed);opacity:.6}
+
+/* ── TOOLTIP ── */
+#tip{position:fixed;background:var(--panel2);border:1px solid var(--accent);padding:8px 12px;font-size:10px;pointer-events:none;z-index:9999;max-width:300px;display:none;border-radius:4px;line-height:1.6}
+#tip.show{display:block}
+#tip strong{color:var(--accent);font-size:11px;display:block;margin-bottom:4px}
+#tip .tip-rule{color:var(--on);font-style:italic}
+#tip pre{color:var(--text);font-size:9px;margin-top:6px;white-space:pre-wrap;border-top:1px solid var(--border);padding-top:6px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🐠 Apex Fusion Visualizer</h1>
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('dash',this)">Dashboard</button>
+    <button class="tab-btn" onclick="switchTab('timeline',this)">Timeline</button>
+    <button class="tab-btn" onclick="switchTab('graph',this)">Dependencies</button>
+  </div>
+</header>
+
+<div id="controls">
+  <div class="cg">
+    <span class="cl">Time</span>
+    <input type="range" id="time-slider" min="0" max="1439" value="720" oninput="onTimeChange()">
+    <span id="time-disp">12:00</span>
+  </div>
+  <div class="cg">
+    <span class="cl">Feed</span>
+    <button class="feed-btn" id="fb-A" onclick="toggleFeed('A')">A</button>
+    <button class="feed-btn" id="fb-B" onclick="toggleFeed('B')">B</button>
+    <button class="feed-btn" id="fb-C" onclick="toggleFeed('C')">C</button>
+    <button class="feed-btn" id="fb-D" onclick="toggleFeed('D')">D</button>
+  </div>
+  <div class="cg">
+    <span class="cl">Temp °F</span>
+    <input type="number" id="inp-tmp" value="80.0" step="0.1" oninput="render()" title="Tank temperature">
+  </div>
+  <div class="cg">
+    <span class="cl">DispLv</span>
+    <button class="tog" id="tog-displv" onclick="toggleSensor('displv')" title="Display tank float switch">CLOSED</button>
+  </div>
+  <div class="cg">
+    <span class="cl">RO Level</span>
+    <button class="tog" id="tog-rolvl" onclick="toggleSensor('rolvl')" title="RO reservoir float switch">CLOSED</button>
+  </div>
+  <div class="cg">
+    <span class="cl">Maint</span>
+    <button class="tog" id="tog-maint" onclick="toggleMaint()" title="Toggle MAINTENANCE mode">OFF</button>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="tab-dash" class="tab-content active">
+  <div id="dash-wrap">
+
+    <!-- Main Tank -->
+    <div class="tank-box">
+      <h2>Main Tank</h2>
+      <div class="tank-visual" id="mt-visual">
+        <div class="equip" id="eq-PH-L" title="PH-L">
+          <div class="equip-icon" id="icon-PH-L">🌀</div>
+          <div class="equip-dot" id="dot-PH-L"></div>
+          <div class="equip-lbl">PH-L</div>
+        </div>
+        <div class="equip" id="eq-Light" title="Light">
+          <div class="equip-icon" id="icon-Light">💡</div>
+          <div class="equip-dot" id="dot-Light"></div>
+          <div class="equip-lbl">Light</div>
+        </div>
+        <div class="equip" id="eq-PH-R" title="PH-R">
+          <div class="equip-icon" id="icon-PH-R">🌀</div>
+          <div class="equip-dot" id="dot-PH-R"></div>
+          <div class="equip-lbl">PH-R</div>
+        </div>
+        <div class="equip" id="eq-PumpReturn" title="Return Pump">
+          <div class="equip-icon" id="icon-PumpReturn">⬆️</div>
+          <div class="equip-dot" id="dot-PumpReturn"></div>
+          <div class="equip-lbl">Return</div>
+        </div>
+      </div>
+      <div class="cards" id="cards-mt"></div>
+    </div>
+
+    <!-- Sump -->
+    <div class="tank-box">
+      <h2>Sump</h2>
+      <div class="sump-visual">
+        <div class="equip" title="Heater 1">
+          <div class="equip-icon" id="icon-Heater1">🌡️</div>
+          <div class="equip-dot" id="dot-Heater1"></div>
+          <div class="equip-lbl">Heater 1</div>
+        </div>
+        <div class="equip" title="Heater 2">
+          <div class="equip-icon" id="icon-Heater2">🌡️</div>
+          <div class="equip-dot" id="dot-Heater2"></div>
+          <div class="equip-lbl">Heater 2</div>
+        </div>
+        <div class="equip" title="Skimmer">
+          <div class="equip-icon" id="icon-Skimmer">💨</div>
+          <div class="equip-dot" id="dot-Skimmer"></div>
+          <div class="equip-lbl">Skimmer</div>
+        </div>
+        <div class="equip" title="Carbon Reactor">
+          <div class="equip-icon" id="icon-CarbonReactor">⚗️</div>
+          <div class="equip-dot" id="dot-CarbonReactor"></div>
+          <div class="equip-lbl">Carbon Rx</div>
+        </div>
+        <div class="equip" title="ATO Pump">
+          <div class="equip-icon" id="icon-ATOPump">💧</div>
+          <div class="equip-dot" id="dot-ATOPump"></div>
+          <div class="equip-lbl">ATO Pump</div>
+        </div>
+        <div class="equip" title="Sump PH">
+          <div class="equip-icon" id="icon-PH-Sump">〰️</div>
+          <div class="equip-dot" id="dot-PH-Sump"></div>
+          <div class="equip-lbl">PH-Sump</div>
+        </div>
+      </div>
+      <div class="cards" id="cards-sump"></div>
+    </div>
+
+    <!-- Cntl_B1 -->
+    <div class="tank-box">
+      <h2>Cntl_B1</h2>
+      <div class="cards" id="cards-b1"></div>
+    </div>
+
+    <!-- Virtual Outlets -->
+    <div class="tank-box" id="vtank">
+      <h2>Virtual Outlets</h2>
+      <div class="vlist" id="vcards"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- TIMELINE -->
+<div id="tab-timeline" class="tab-content">
+  <p class="tl-note">Shows outlet states across 24 hours with no active feed modes. Drag the time slider above to move the cursor.</p>
+  <div id="tl-wrap">
+    <div class="tl-hours" id="tl-hours"></div>
+    <div id="tl-rows"></div>
+  </div>
+</div>
+
+<!-- DEPENDENCY GRAPH -->
+<div id="tab-graph" class="tab-content">
+  <div id="graph-wrap">
+    <svg id="dep-svg" height="500"></svg>
+  </div>
+</div>
+
+<div id="tip"></div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// BUNDLED APEX PROGRAMS (main branch)
+// ═══════════════════════════════════════════════════
+const PROGRAMS = {
+  'MainTank/PumpReturn': `Fallback ON
+Set ON
+If FeedD 000 Then ON
+If FeedC 000 Then OFF
+If Output MAINTENANCE = ON Then OFF
+If Output FeedA-Pumps = ON Then OFF
+If Output FeedB-Pumps = ON Then OFF
+If Output FeedBkfast = ON Then OFF
+If Output FeedLunch = ON Then OFF
+If Output FeedC-Pumps = ON Then OFF`,
+
+  'MainTank/PH-L': `Fallback OFF
+Set ON
+If FeedC 000 Then OFF
+If Output FeedA-PHOn = ON Then ON
+If Output FeedB-PwrH = ON Then ON
+If Output FeedC-PH = ON Then OFF
+If Output FeedD-Outlet = ON Then ON
+If Output MAINTENANCE = ON Then OFF
+If Output FeedBkfast = ON Then ON
+If Output FeedLunch = ON Then ON
+If Output FeedA-PHOff = ON Then OFF
+If Output PHNight = ON Then OFF`,
+
+  'MainTank/PH-R': `Fallback OFF
+Set ON
+If FeedC 000 Then OFF
+If Output FeedA-PHOn = ON Then ON
+If Output FeedB-PwrH = ON Then ON
+If Output FeedC-PH = ON Then OFF
+If Output FeedD-Outlet = ON Then ON
+If Output MAINTENANCE = ON Then OFF
+If Output FeedBkfast = ON Then ON
+If Output FeedLunch = ON Then ON
+If Output FeedA-PHOff = ON Then OFF
+If Output PHNight = ON Then OFF`,
+
+  'MainTank/Light': `Fallback ON
+Set OFF
+If Output PumpReturn = ON Then OFF
+If Output PumpReturn = OFF Then ON`,
+
+  'Sump/ATOPump': `Set OFF
+If DispLv OPEN Then ON
+Defer 000:10 Then OFF
+If ROLVL OPEN Then OFF`,
+
+  'Sump/CarbonReactor': `Fallback ON
+Set ON
+If Output PumpReturn = OFF Then OFF
+Defer 030:00 Then ON`,
+
+  'Sump/Heater1': `Fallback ON
+Set ON
+If Tmp < 79.9 Then ON
+If Tmp > 80.0 Then OFF`,
+
+  'Sump/Heater2': `Fallback OFF
+Set ON
+If Tmp < 79.9 Then ON
+If Tmp > 80.0 Then OFF`,
+
+  'Sump/PH-Sump': `Fallback OFF
+Set OFF
+If Time 09:00 to 11:00 Then ON
+If FeedC 000 Then ON
+If Output FeedA-PHOn = ON Then ON
+If Output FeedB-PwrH = ON Then ON
+If Output MAINTENANCE = ON Then OFF
+If Output FeedD-Outlet = ON Then ON
+If Output FeedBkfast = ON Then ON
+If Output FeedLunch = ON Then ON`,
+
+  'Sump/Skimmer': `Fallback OFF
+Set ON
+If Output MAINTENANCE = ON Then OFF
+If Output FeedA-Pumps = ON Then OFF
+If Output FeedB-Pumps = ON Then OFF
+If Output FeedC-Pumps = ON Then OFF
+If Output FeedD-Outlet = ON Then OFF
+If Output PumpReturn = OFF Then OFF
+If Output FeedA-SkmOff = ON Then OFF
+Defer 005:00 Then ON`,
+
+  'VirtualOutlets/MAINTENANCE': `Set OFF`,
+
+  'VirtualOutlets/PHNight': `Fallback OFF
+Set OFF
+If Time 20:00 to 04:59 Then ON
+If Time 05:00 to 06:59 Then OFF
+If Time 07:00 to 10:59 Then ON`,
+
+  'VirtualOutlets/FeedA-PHOn': `Fallback OFF
+Set OFF
+If FeedA 000 Then ON
+Defer 089:00 Then OFF
+If Output MAINTENANCE = ON Then OFF`,
+
+  'VirtualOutlets/FeedA-PHOff': `Fallback OFF
+Set OFF
+If Output FeedA-PHOn = ON Then ON
+Defer 030:00 Then ON
+If Output FeedA-PHOn = OFF Then OFF`,
+
+  'VirtualOutlets/FeedA-Pumps': `Fallback OFF
+Set OFF
+If FeedA 000 Then ON
+Defer 090:00 Then OFF
+If Output MAINTENANCE = ON Then OFF`,
+
+  'VirtualOutlets/FeedA-SKMOff': `Fallback OFF
+Set OFF
+If Output FeedA-PHOn = ON Then ON
+Defer 060:00 Then ON
+If Output FeedA-PHOn = OFF Then OFF`,
+
+  'VirtualOutlets/FeedB-PWRH': `Fallback OFF
+Set OFF
+If FeedB 000 Then ON
+Defer 030:00 Then OFF
+If Output MAINTENANCE = ON Then OFF`,
+
+  'VirtualOutlets/FeedB-Pumps': `Fallback OFF
+Set OFF
+If FeedB 000 Then ON
+Defer 030:00 Then OFF
+If Output MAINTENANCE = ON Then OFF`,
+
+  'VirtualOutlets/FeedC-PH': `Fallback OFF
+Set OFF
+If FeedC 000 Then ON
+Defer 059:00 Then OFF
+If Output MAINTENANCE = ON Then OFF`,
+
+  'VirtualOutlets/FeedC-Pumps': `Fallback OFF
+Set OFF
+If FeedC 000 Then ON
+Defer 029:00 Then OFF
+If Output MAINTENANCE = ON Then OFF`,
+
+  'Cntl_B1/LevelTest': `Set OFF`,
+};
+
+// ═══════════════════════════════════════════════════
+// METADATA: folders, display order, icons
+// ═══════════════════════════════════════════════════
+const FOLDERS = {
+  'MainTank':      { label:'Main Tank',       physical:true  },
+  'Sump':          { label:'Sump',            physical:true  },
+  'Cntl_B1':       { label:'Cntl B1',         physical:true  },
+  'VirtualOutlets':{ label:'Virtual Outlets', physical:false },
+};
+
+// Evaluation order: virtuals first (tier by dependency), then physicals
+const EVAL_ORDER = [
+  // Tier 0 – no outlet dependencies
+  'VirtualOutlets/MAINTENANCE',
+  'VirtualOutlets/PHNight',
+  'VirtualOutlets/FeedA-PHOn',
+  'VirtualOutlets/FeedA-Pumps',
+  'VirtualOutlets/FeedB-PWRH',
+  'VirtualOutlets/FeedB-Pumps',
+  'VirtualOutlets/FeedC-PH',
+  'VirtualOutlets/FeedC-Pumps',
+  // Tier 1 – depend on Tier 0 virtuals
+  'VirtualOutlets/FeedA-PHOff',
+  'VirtualOutlets/FeedA-SKMOff',
+  // Physical outlets (dependency-ordered)
+  'MainTank/PumpReturn',
+  'MainTank/PH-L',
+  'MainTank/PH-R',
+  'MainTank/Light',
+  'Sump/Heater1',
+  'Sump/Heater2',
+  'Sump/Skimmer',
+  'Sump/CarbonReactor',
+  'Sump/ATOPump',
+  'Sump/PH-Sump',
+  'Cntl_B1/LevelTest',
+];
+
+// ═══════════════════════════════════════════════════
+// PARSER
+// ═══════════════════════════════════════════════════
+function parseRules(text) {
+  const rules = [];
+  for (const raw of text.split('\n')) {
+    const line = raw.trim();
+    if (!line) continue;
+    let m;
+
+    // Fallback
+    if ((m = line.match(/^Fallback\s+(ON|OFF)$/i)))
+      { rules.push({type:'fallback', state:m[1].toUpperCase()}); continue; }
+
+    // Set
+    if ((m = line.match(/^Set\s+(ON|OFF)$/i)))
+      { rules.push({type:'set', state:m[1].toUpperCase()}); continue; }
+
+    // OSC  000:MM/000:MM/000:MM Then ON|OFF
+    if ((m = line.match(/^OSC\s+(\d+):(\d+)\/(\d+):(\d+)\/(\d+):(\d+)\s+Then\s+(ON|OFF)$/i))) {
+      rules.push({
+        type:'osc',
+        onMin:  parseInt(m[1])*60+parseInt(m[2]),
+        offMin: parseInt(m[3])*60+parseInt(m[4]),
+        offMin2: parseInt(m[5])*60+parseInt(m[6]),
+        state: m[7].toUpperCase(),
+      }); continue;
+    }
+
+    // Defer  MM:SS Then ON|OFF
+    if ((m = line.match(/^Defer\s+(\d+):(\d+)\s+Then\s+(ON|OFF)$/i))) {
+      rules.push({
+        type:'defer',
+        minutes: parseInt(m[1]) + parseInt(m[2])/60,
+        state: m[3].toUpperCase(),
+        raw: line,
+      }); continue;
+    }
+
+    // If Time HH:MM to HH:MM Then ON|OFF
+    if ((m = line.match(/^If\s+Time\s+(\d+):(\d+)\s+to\s+(\d+):(\d+)\s+Then\s+(ON|OFF)$/i))) {
+      rules.push({
+        type:'time',
+        fromMin: parseInt(m[1])*60+parseInt(m[2]),
+        toMin:   parseInt(m[3])*60+parseInt(m[4]),
+        state:   m[5].toUpperCase(),
+      }); continue;
+    }
+
+    // If FeedX 000 Then ON|OFF
+    if ((m = line.match(/^If\s+Feed([ABCD])\s+000\s+Then\s+(ON|OFF)$/i)))
+      { rules.push({type:'feed', feed:m[1].toUpperCase(), state:m[2].toUpperCase()}); continue; }
+
+    // If Output NAME = ON|OFF Then ON|OFF
+    if ((m = line.match(/^If\s+Output\s+([\w\-]+)\s+=\s+(ON|OFF)\s+Then\s+(ON|OFF)$/i)))
+      { rules.push({type:'output', name:m[1], outState:m[2].toUpperCase(), state:m[3].toUpperCase()}); continue; }
+
+    // If Tmp OP value Then ON|OFF
+    if ((m = line.match(/^If\s+Tmp\s+([<>]=?)\s+([\d.]+)\s+Then\s+(ON|OFF)$/i)))
+      { rules.push({type:'sensor', sensor:'Tmp', op:m[1], value:parseFloat(m[2]), state:m[3].toUpperCase()}); continue; }
+
+    // If SensorName OPEN|CLOSED Then ON|OFF
+    if ((m = line.match(/^If\s+(\w+)\s+(OPEN|CLOSED)\s+Then\s+(ON|OFF)$/i)))
+      { rules.push({type:'float', sensor:m[1], switchState:m[2].toUpperCase(), state:m[3].toUpperCase()}); continue; }
+
+    rules.push({type:'unknown', raw:line});
+  }
+  return rules;
+}
+
+// Pre-parse all programs
+const PARSED = {};
+for (const [key, text] of Object.entries(PROGRAMS)) {
+  PARSED[key] = parseRules(text);
+}
+
+// ═══════════════════════════════════════════════════
+// EVALUATOR
+// ═══════════════════════════════════════════════════
+function evalOutlet(rules, sim, outletStates) {
+  let state = 'OFF';
+  let decidingRule = null;
+  let isDeferred = false;
+
+  for (const r of rules) {
+    let match = false;
+    switch (r.type) {
+      case 'set':
+        match = true;
+        isDeferred = false;
+        break;
+
+      case 'time': {
+        const t = sim.time;
+        if (r.fromMin <= r.toMin) {
+          match = t >= r.fromMin && t <= r.toMin;
+        } else {
+          // crosses midnight
+          match = t >= r.fromMin || t <= r.toMin;
+        }
+        break;
+      }
+
+      case 'feed':
+        match = sim.feeds[r.feed] === true;
+        break;
+
+      case 'output': {
+        const cur = outletStates[r.name];
+        match = (cur === r.outState);
+        break;
+      }
+
+      case 'osc': {
+        // OSC onMin/offMin/offsetMin  (all in minutes)
+        const period = r.onMin + r.offMin;
+        if (period > 0) {
+          const pos = ((sim.time - r.offMin2) % period + period) % period;
+          match = pos < r.onMin;
+        }
+        break;
+      }
+
+      case 'defer':
+        // In simulation: mark as deferred — show eventual state
+        isDeferred = true;
+        match = true;
+        break;
+
+      case 'sensor': {
+        const v = sim.sensors[r.sensor] || 0;
+        switch (r.op) {
+          case '<':  match = v <  r.value; break;
+          case '>':  match = v >  r.value; break;
+          case '<=': match = v <= r.value; break;
+          case '>=': match = v >= r.value; break;
+        }
+        break;
+      }
+
+      case 'float': {
+        const sv = sim.sensors[r.sensor.toLowerCase()] || 'CLOSED';
+        match = sv.toUpperCase() === r.switchState;
+        break;
+      }
+    }
+
+    if (match && r.type !== 'fallback') {
+      state = r.state;
+      decidingRule = r;
+    }
+  }
+
+  return { state, decidingRule, isDeferred };
+}
+
+function evaluateAll(sim) {
+  const outletStates = {};
+  const outletDetails = {};
+
+  for (const key of EVAL_ORDER) {
+    const name = key.split('/')[1];
+    const rules = PARSED[key];
+    if (!rules) continue;
+    const result = evalOutlet(rules, sim, outletStates);
+    outletStates[name] = result.state;
+    outletDetails[key] = result;
+  }
+
+  return { outletStates, outletDetails };
+}
+
+// ═══════════════════════════════════════════════════
+// SIMULATION STATE
+// ═══════════════════════════════════════════════════
+const sim = {
+  time: 720,
+  feeds: { A:false, B:false, C:false, D:false },
+  sensors: { Tmp:80.0, displv:'CLOSED', rolvl:'CLOSED' },
+};
+
+// ═══════════════════════════════════════════════════
+// RULE DESCRIPTION HELPERS
+// ═══════════════════════════════════════════════════
+function ruleDesc(r) {
+  if (!r) return '';
+  switch (r.type) {
+    case 'set':    return `Set ${r.state}`;
+    case 'time':   return `Time ${minToHHMM(r.fromMin)}–${minToHHMM(r.toMin)} → ${r.state}`;
+    case 'feed':   return `Feed${r.feed} active → ${r.state}`;
+    case 'output': return `Output ${r.name}=${r.outState} → ${r.state}`;
+    case 'osc':    return `OSC ${r.onMin}min on / ${r.offMin}min off → ${r.state}`;
+    case 'defer':  return `⏱ Defer ${r.raw} → ${r.state}`;
+    case 'sensor': return `Temp ${r.op} ${r.value}°F → ${r.state}`;
+    case 'float':  return `${r.sensor} ${r.switchState} → ${r.state}`;
+    default:       return r.raw || '';
+  }
+}
+
+function minToHHMM(m) {
+  return String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m%60).padStart(2,'0');
+}
+
+function programText(key) {
+  return PROGRAMS[key] || '';
+}
+
+// ═══════════════════════════════════════════════════
+// RENDER — DASHBOARD
+// ═══════════════════════════════════════════════════
+function render() {
+  sim.sensors.Tmp = parseFloat(document.getElementById('inp-tmp').value) || 80.0;
+
+  const { outletStates, outletDetails } = evaluateAll(sim);
+
+  // Physical outlets per folder
+  const folders = { MainTank:[], Sump:[], Cntl_B1:[] };
+  const virtuals = [];
+
+  for (const key of EVAL_ORDER) {
+    const [folder, name] = key.split('/');
+    const detail = outletDetails[key] || { state:'OFF', decidingRule:null, isDeferred:false };
+    const on = detail.state === 'ON';
+    const entry = { key, name, folder, on, detail };
+    if (folder === 'VirtualOutlets') virtuals.push(entry);
+    else if (folders[folder]) folders[folder].push(entry);
+  }
+
+  // Update equipment icons
+  const iconMap = {
+    'PH-L':'PH-L','PH-R':'PH-R','PumpReturn':'PumpReturn','Light':'Light',
+    'Heater1':'Heater1','Heater2':'Heater2','Skimmer':'Skimmer',
+    'CarbonReactor':'CarbonReactor','ATOPump':'ATOPump','PH-Sump':'PH-Sump'
+  };
+  for (const [id, name] of Object.entries(iconMap)) {
+    const icon = document.getElementById('icon-'+id);
+    const dot  = document.getElementById('dot-'+id);
+    const on   = outletStates[name] === 'ON';
+    if (icon) { icon.classList.toggle('on', on); }
+    if (dot)  { dot.classList.toggle('on', on); }
+  }
+
+  // Render card grids
+  renderCards('cards-mt',   folders.MainTank,   false);
+  renderCards('cards-sump', folders.Sump,       false);
+  renderCards('cards-b1',   folders.Cntl_B1,    false);
+  renderCards('vcards',     virtuals,            true);
+
+  // Update timeline cursor
+  updateTimelineCursor();
+}
+
+function renderCards(containerId, entries, isVirtual) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = '';
+  for (const e of entries) {
+    const div = document.createElement('div');
+    div.className = (isVirtual ? 'vcard' : 'card') + (e.on ? ' on' : '');
+    const desc = ruleDesc(e.detail.decidingRule);
+    const deferred = e.detail.isDeferred ? ' ⏱' : '';
+    div.innerHTML = `
+      <div class="${isVirtual?'vcard-name':'card-name'}">${e.name}</div>
+      <div class="${isVirtual?'vcard-state':'card-state'} ${e.on?'on':'off'}">${e.detail.state}${deferred}</div>
+      <div class="${isVirtual?'vcard-rule':'card-rule'}">${desc}</div>`;
+    div.addEventListener('mouseenter', ev => showTip(ev, e));
+    div.addEventListener('mouseleave', hideTip);
+    div.addEventListener('mousemove',  ev => moveTip(ev));
+    el.appendChild(div);
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// TOOLTIP
+// ═══════════════════════════════════════════════════
+const tip = document.getElementById('tip');
+function showTip(ev, e) {
+  const detail = e.detail;
+  const deciding = ruleDesc(detail.decidingRule) || '(no matching rule)';
+  tip.innerHTML = `<strong>${e.key}</strong>
+State: <span class="tip-rule">${detail.state}${detail.isDeferred?' (⏱ deferred)':''}</span>
+Decided by: ${deciding}
+<pre>${programText(e.key)}</pre>`;
+  tip.classList.add('show');
+  moveTip(ev);
+}
+function hideTip() { tip.classList.remove('show'); }
+function moveTip(ev) {
+  const x = Math.min(ev.clientX + 14, window.innerWidth - 320);
+  const y = Math.min(ev.clientY + 14, window.innerHeight - 200);
+  tip.style.left = x + 'px';
+  tip.style.top  = y + 'px';
+}
+
+// ═══════════════════════════════════════════════════
+// CONTROLS
+// ═══════════════════════════════════════════════════
+function onTimeChange() {
+  sim.time = parseInt(document.getElementById('time-slider').value);
+  document.getElementById('time-disp').textContent = minToHHMM(sim.time);
+  render();
+}
+
+function toggleFeed(f) {
+  sim.feeds[f] = !sim.feeds[f];
+  document.getElementById('fb-'+f).classList.toggle('active', sim.feeds[f]);
+  render();
+}
+
+function toggleSensor(s) {
+  sim.sensors[s] = sim.sensors[s] === 'CLOSED' ? 'OPEN' : 'CLOSED';
+  const btn = document.getElementById('tog-'+s);
+  btn.textContent = sim.sensors[s];
+  btn.classList.toggle('open', sim.sensors[s] === 'OPEN');
+  render();
+}
+
+function toggleMaint() {
+  // MAINTENANCE virtual outlet is "Set OFF" — override via sim flag
+  sim.maintenance = !sim.maintenance;
+  // Inject into sim by temporarily patching — simpler: use a sim flag checked in evaluator
+  // We handle this by treating MAINTENANCE's program as Set ON when active
+  const btn = document.getElementById('tog-maint');
+  btn.textContent = sim.maintenance ? 'ON' : 'OFF';
+  btn.classList.toggle('maint', sim.maintenance);
+  // Patch PARSED for MAINTENANCE
+  if (sim.maintenance) {
+    PARSED['VirtualOutlets/MAINTENANCE'] = [{type:'set', state:'ON'}];
+  } else {
+    PARSED['VirtualOutlets/MAINTENANCE'] = parseRules(PROGRAMS['VirtualOutlets/MAINTENANCE']);
+  }
+  render();
+}
+
+// ═══════════════════════════════════════════════════
+// TIMELINE
+// ═══════════════════════════════════════════════════
+function buildTimeline() {
+  // Compute state for each minute with no active feeds
+  const baseSim = { time:0, feeds:{A:false,B:false,C:false,D:false}, sensors:{Tmp:80.0,displv:'CLOSED',rolvl:'CLOSED'} };
+
+  // Build timeline data: for each outlet, array of booleans [1440]
+  const tlData = {};
+  for (const key of EVAL_ORDER) {
+    tlData[key] = new Uint8Array(1440);
+  }
+
+  // Sample every minute
+  for (let t = 0; t < 1440; t++) {
+    baseSim.time = t;
+    const { outletStates } = evaluateAll(baseSim);
+    for (const key of EVAL_ORDER) {
+      const name = key.split('/')[1];
+      tlData[key][t] = outletStates[name] === 'ON' ? 1 : 0;
+    }
+  }
+
+  // Hour labels
+  const hoursEl = document.getElementById('tl-hours');
+  hoursEl.innerHTML = '';
+  for (let h = 0; h < 24; h++) {
+    const d = document.createElement('div');
+    d.className = 'tl-h';
+    d.textContent = String(h).padStart(2,'0');
+    hoursEl.appendChild(d);
+  }
+
+  // Rows
+  const rowsEl = document.getElementById('tl-rows');
+  rowsEl.innerHTML = '';
+
+  // Section headers
+  let lastFolder = null;
+
+  for (const key of EVAL_ORDER) {
+    const [folder, name] = key.split('/');
+    const isVirtual = folder === 'VirtualOutlets';
+
+    if (folder !== lastFolder) {
+      const sec = document.createElement('div');
+      sec.className = 'tl-section';
+      sec.textContent = FOLDERS[folder]?.label || folder;
+      rowsEl.appendChild(sec);
+      lastFolder = folder;
+    }
+
+    const row = document.createElement('div');
+    row.className = 'tl-row';
+
+    const lbl = document.createElement('div');
+    lbl.className = 'tl-lbl' + (isVirtual ? ' virtual' : '');
+    lbl.textContent = name;
+    row.appendChild(lbl);
+
+    const bar = document.createElement('div');
+    bar.className = 'tl-bar';
+    bar.dataset.key = key;
+
+    // Build segments
+    const data = tlData[key];
+    let segStart = null;
+    for (let t = 0; t <= 1440; t++) {
+      const on = t < 1440 ? data[t] === 1 : false;
+      if (on && segStart === null) segStart = t;
+      if (!on && segStart !== null) {
+        const seg = document.createElement('div');
+        seg.className = 'tl-seg' + (isVirtual ? ' v' : '');
+        seg.style.left  = (segStart / 1440 * 100) + '%';
+        seg.style.width = ((t - segStart) / 1440 * 100) + '%';
+        bar.appendChild(seg);
+        segStart = null;
+      }
+    }
+
+    // Cursor
+    const cursor = document.createElement('div');
+    cursor.className = 'tl-cursor';
+    cursor.style.left = (sim.time / 1440 * 100) + '%';
+    bar.appendChild(cursor);
+
+    row.appendChild(bar);
+    rowsEl.appendChild(row);
+  }
+}
+
+function updateTimelineCursor() {
+  document.querySelectorAll('.tl-cursor').forEach(c => {
+    c.style.left = (sim.time / 1440 * 100) + '%';
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// DEPENDENCY GRAPH
+// ═══════════════════════════════════════════════════
+function buildDepGraph() {
+  const svg = document.getElementById('dep-svg');
+
+  // Columns: 0=Inputs, 1=VirtualTier0, 2=VirtualTier1, 3=Physical
+  const cols = [
+    // Inputs (feeds, sensors, time)
+    ['FeedA','FeedB','FeedC','FeedD','Time','Tmp','DispLv','ROLVL'],
+    // Virtual Tier 0
+    ['MAINTENANCE','PHNight','FeedA-PHOn','FeedA-Pumps','FeedB-PWRH','FeedB-Pumps','FeedC-PH','FeedC-Pumps'],
+    // Virtual Tier 1
+    ['FeedA-PHOff','FeedA-SKMOff'],
+    // Physical
+    ['PumpReturn','PH-L','PH-R','Light','Heater1','Heater2','Skimmer','CarbonReactor','ATOPump','PH-Sump','LevelTest'],
+  ];
+
+  const colTypes = ['input','virtual','virtual','physical'];
+  const W = 150, H = 28, PAD_X = 40, COL_W = 200;
+  const MARGIN_TOP = 30;
+
+  // Compute positions
+  const nodePos = {}; // name → {x,y,cx,cy}
+  for (let c = 0; c < cols.length; c++) {
+    const col = cols[c];
+    const startY = MARGIN_TOP;
+    for (let r = 0; r < col.length; r++) {
+      const name = col[r];
+      const x = PAD_X + c * COL_W;
+      const y = startY + r * (H + 8);
+      nodePos[name] = { x, y, cx: x + W/2, cy: y + H/2 };
+    }
+  }
+
+  // Total SVG size
+  const maxRows = Math.max(...cols.map(c => c.length));
+  const svgH = MARGIN_TOP + maxRows * (H + 8) + 40;
+  const svgW = PAD_X + cols.length * COL_W + W + PAD_X;
+  svg.setAttribute('height', svgH);
+  svg.setAttribute('viewBox', `0 0 ${svgW} ${svgH}`);
+  svg.style.minWidth = svgW + 'px';
+
+  const { outletStates } = evaluateAll(sim);
+
+  // Build edges from parsed programs
+  const edges = []; // {from, to, on}
+  for (const key of EVAL_ORDER) {
+    const [folder, name] = key.split('/');
+    const rules = PARSED[key] || [];
+    for (const r of rules) {
+      if (r.type === 'feed')   edges.push({ from: 'Feed'+r.feed, to: name });
+      if (r.type === 'time')   edges.push({ from: 'Time', to: name });
+      if (r.type === 'output') edges.push({ from: r.name, to: name });
+      if (r.type === 'sensor') edges.push({ from: 'Tmp', to: name });
+      if (r.type === 'float')  edges.push({ from: r.sensor, to: name });
+    }
+  }
+  // Deduplicate edges
+  const edgeSet = new Set();
+  const uniqueEdges = edges.filter(e => {
+    const k = e.from+'→'+e.to;
+    if (edgeSet.has(k)) return false;
+    edgeSet.add(k); return true;
+  });
+
+  // Build SVG
+  let html = `<defs>
+    <marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#1a3a6b"/>
+    </marker>
+    <marker id="arr-on" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#00e676" opacity=".7"/>
+    </marker>
+    <marker id="arr-v" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#ce93d8" opacity=".6"/>
+    </marker>
+  </defs>`;
+
+  // Column labels
+  const colLabels = ['Inputs','Virtual (Tier 0)','Virtual (Tier 1)','Physical Outlets'];
+  for (let c = 0; c < cols.length; c++) {
+    const x = PAD_X + c * COL_W + W/2;
+    html += `<text x="${x}" y="18" text-anchor="middle" font-family="Courier New" font-size="10" fill="#29b6f6" letter-spacing="1" text-transform="uppercase">${colLabels[c]}</text>`;
+  }
+
+  // Edges
+  for (const e of uniqueEdges) {
+    const from = nodePos[e.from];
+    const to   = nodePos[e.to];
+    if (!from || !to) continue;
+    const fromOn = outletStates[e.from] === 'ON' || sim.feeds[e.from?.replace('Feed','')] === true;
+    const toOn   = outletStates[e.to] === 'ON';
+    const active = fromOn && toOn;
+    const isV    = cols[1].includes(e.from) || cols[2].includes(e.from);
+    const marker = active ? (isV ? 'arr-v' : 'arr-on') : 'arr';
+    const cls    = active ? (isV ? 'dep-edge virt' : 'dep-edge on') : 'dep-edge';
+    const x1 = from.x + W, y1 = from.cy;
+    const x2 = to.x,       y2 = to.cy;
+    const cx1 = x1 + 30, cx2 = x2 - 30;
+    html += `<path class="${cls}" d="M${x1},${y1} C${cx1},${y1} ${cx2},${y2} ${x2},${y2}" marker-end="url(#${marker})"/>`;
+  }
+
+  // Nodes
+  for (let c = 0; c < cols.length; c++) {
+    const col = cols[c];
+    const type = colTypes[c];
+    for (const name of col) {
+      const p = nodePos[name];
+      if (!p) continue;
+      const on = outletStates[name] === 'ON' || (type === 'input' && name.startsWith('Feed') && sim.feeds[name.replace('Feed','')] === true);
+      const cls = `dep-node ${type}${on ? ' on' : ''}`;
+      const stroke = on ? (type === 'virtual' ? '#ce93d8' : '#00e676') : '#1a3a6b';
+      const fill   = type === 'input' ? '#0a0a20' : (type === 'virtual' ? '#1a0a2e' : '#0d2010');
+      const textFill = on ? (type === 'virtual' ? '#ce93d8' : '#00e676') : '#90aec8';
+      const sw = on ? 2 : 1.5;
+      const dash = type === 'input' ? 'stroke-dasharray="4"' : '';
+      html += `<g class="${cls}">
+        <rect x="${p.x}" y="${p.y}" width="${W}" height="${H}" rx="4" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" ${dash}/>
+        <text x="${p.cx}" y="${p.cy+4}" text-anchor="middle" font-family="Courier New" font-size="11" fill="${textFill}">${name}</text>
+      </g>`;
+    }
+  }
+
+  svg.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════
+// TAB SWITCHING
+// ═══════════════════════════════════════════════════
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  btn.classList.add('active');
+
+  if (id === 'timeline') buildTimeline();
+  if (id === 'graph')    buildDepGraph();
+}
+
+// ═══════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════
+render();
+</script>
+</body>
+</html>
